@@ -20,9 +20,9 @@ log = logging.getLogger(__name__)
 def main(opts) -> None:
     tokenizer: Tokenizer
     if Path(opts.tokenizer).is_file():
-        tokenizer = Tokenizer.from_file(opts.tokenizer, eos_token_id=opts.eos, pad_token_id=opts.pad)
+        tokenizer = Tokenizer.from_file(str(opts.tokenizer), eos_token_id=opts.eos, pad_token_id=opts.pad)
     else:
-        tokenizer = Tokenizer.from_pretrained(opts.tokenizer, eos_token_id=opts.eos, pad_token_id=opts.pad)
+        tokenizer = Tokenizer.from_pretrained(str(opts.tokenizer), eos_token_id=opts.eos, pad_token_id=opts.pad)
 
     dataset = ds.load_dataset("allenai/tulu-v2-sft-mixture", split="train")
 
@@ -116,7 +116,7 @@ def get_parser() -> ArgumentParser:
         "--tokenizer",
         type=str,
         help="""Tokenizer path or identifier.""",
-        default=Path(__file__).parent / "tokenizers" / "allenai_eleuther-ai-gpt-neox-20b-pii-special.json",
+        default=Path(__file__).parent.parent / "tokenizers" / "allenai_eleuther-ai-gpt-neox-20b-pii-special.json",
     )
     parser.add_argument("-s", "--seq-len", type=int, help="""Max sequence length.""", default=2048)
     parser.add_argument("--eos", type=int, help="""EOS token ID.""", default=50279)
