@@ -41,6 +41,7 @@ def build_memmap_dataset(
         pad_token_id=train_config.model.pad_token_id,
         generate_attention_mask=data_config.generate_attention_mask,
         label_mask_paths=cast(Optional[List[PathOrStr]], data_config.label_mask_paths),
+        instance_filter_config=data_config.instance_filter,
     )
 
 
@@ -79,7 +80,7 @@ def build_eval_dataloader(
     )
 
 
-def build_train_dataloader(train_config: TrainConfig) -> DataLoader:
+def build_train_dataloader(train_config: TrainConfig, world_size: Optional[int] = None) -> DataLoader:
     assert train_config.device_train_batch_size is not None
     collator = DataCollator(
         pad_direction=train_config.data.pad_direction, pad_token_id=train_config.model.pad_token_id
@@ -102,6 +103,7 @@ def build_train_dataloader(train_config: TrainConfig) -> DataLoader:
             seed=seed + (train_config.epoch or 0),
             shuffle=True,
             drop_last=train_config.data.drop_last,
+            world_size=world_size,
             work_dir=work_dir,
         ),
         batch_size=train_config.device_train_batch_size,

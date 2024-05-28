@@ -38,6 +38,7 @@ __all__ = [
     "SchedulerType",
     "SchedulerConfig",
     "DataConfig",
+    "InstanceFilterConfig",
     "EvaluatorConfig",
     "TokenizerConfig",
     "TrainConfig",
@@ -531,10 +532,23 @@ class SchedulerConfig(BaseConfig):
     vs after the warmup period.
     """
 
+    warmup_min_lr: Optional[float] = None
+    """
+    The starting LR during the warmup period. If not set this defaults to 10% of
+    the target LR.
+    """
+
 
 class PaddingDirection(StrEnum):
     right = "right"
     left = "left"
+
+
+@dataclass
+class InstanceFilterConfig(BaseConfig):
+    repetition_max_period: int = 13
+    repetition_min_period: int = 1
+    repetition_max_count: int = 32
 
 
 @dataclass
@@ -551,6 +565,7 @@ class DataConfig(BaseConfig):
     persistent_workers: bool = False
     timeout: int = 0
     seed: Optional[int] = None
+    instance_filter: Optional[InstanceFilterConfig] = None
 
 
 class EvaluatorType(StrEnum):
@@ -680,6 +695,14 @@ class FSDPConfig(BaseConfig):
     """
 
     precision: FSDPPrecision = FSDPPrecision.pure
+
+    hybrid_sharding_num_model_replicas: Optional[int] = None
+    """
+    The number of model instances, when using a hybrid sharding strategy.
+    If not ``None``, this must divide the total number of nodes. If ``None``, the default,
+    a model instance is used per node (as determined by ``get_world_size() // get_local_world_size()``).
+    PyTorch's default HSDP behavior matches this default behavior.
+    """
 
 
 class CheckpointType(StrEnum):
@@ -1010,11 +1033,9 @@ class TrainConfig(BaseConfig):
     normalizing term to be close to 0.
     """
 
-    time_limit: Optional[float] = 60 * 60 * 47.5
+    time_limit: Optional[float] = None
     """
     The maximum amount of time to train for before saving a checkpoint and ending early.
-    On LUMI we have 48 hours max per job, so we default to just under 48 hours to give us time
-    to write out a final checkpoint.
     """
 
     extra_steps_after_cancel: int = 10
