@@ -468,6 +468,10 @@ class OLMoBlock(nn.Module):
             except ModuleNotFoundError:
                 pass
 
+
+        # Jiahai: hooks
+        self.hook_z = nn.Identity()
+
     def reset_parameters(self):
         if self.k_norm is not None:
             self.k_norm.reset_parameters()
@@ -607,6 +611,10 @@ class OLMoBlock(nn.Module):
         # Re-assemble all head outputs side-by-side.
         att = att.transpose(1, 2).contiguous().view(B, T, C)
 
+        # Jiahai: hooks z
+        # shape: (batch, tokens, d_model), where d_model is (n_heads, d_head)
+        att = self.hook_z(att)
+
         # Apply output projection.
         return self.attn_out(att), present
 
@@ -657,6 +665,9 @@ class OLMoSequentialBlock(OLMoBlock):
             config.d_model, self.hidden_size, bias=config.include_bias, device=config.init_device
         )
 
+        # Jiahai: att hook
+        self.att_hook = nn.Identity()
+
     def reset_parameters(self):
         super().reset_parameters()
         self.attn_norm.reset_parameters()
@@ -689,7 +700,8 @@ class OLMoSequentialBlock(OLMoBlock):
             qkv = self.att_proj(self.attn_norm(x))
 
         if self.config.clip_qkv is not None:
-            qkv.clamp_(min=-self.config.clip_qkv, max=self.config.clip_qkv)
+            # Jiahai: changes in-place clamp to non-inplace clamp because backward hooks return views
+            qkv = qkv.clamp(min=-self.config.clip_qkv, max=self.config.clip_qkv)
 
         q, k, v = qkv.split(self.fused_dims, dim=-1)
 
@@ -701,6 +713,9 @@ class OLMoSequentialBlock(OLMoBlock):
         else:
             att, cache = self.attention(q, k, v, attention_bias, layer_past=layer_past, use_cache=use_cache)
 
+        # Jiahai: hooks att
+        att = self.att_hook(att)
+        
         # Add attention scores.
         # shape: (B, T, C)
         x = x + self.dropout(att)
